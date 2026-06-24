@@ -1,64 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bank note authentication</title>
-
-    <style>
-        body{font-family:Aria , sans-serif; max-width: 400px;margin: 40px auto;}
-        label{display: block;margin-top: 10px;}
-        input{width: 100%; padding: 6px;}
-        button{margin-top: 16px;padding: 10px 20px; cursor: pointer;}
-        #result{margin-top: 20px;font-weight: bold;}
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bank Note Authentication</title>
+  <style>
+    :root { --bg:#0f172a; --card:#1e293b; --line:#334155; --text:#e2e8f0; --muted:#94a3b8; --accent:#3b82f6; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+           font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+           background: var(--bg); color: var(--text); padding: 24px; }
+    .card { width:100%; max-width:440px; background:var(--card); border:1px solid var(--line);
+            border-radius:16px; padding:28px; }
+    h1 { font-size:1.25rem; margin:0 0 4px; }
+    p.sub { color:var(--muted); margin:0 0 20px; font-size:0.875rem; }
+    label { display:block; font-size:0.8rem; color:var(--muted); margin:14px 0 6px; }
+    input { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--line);
+            background:#0f172a; color:var(--text); font-size:0.95rem; }
+    input:focus { outline:none; border-color:var(--accent); }
+    button { width:100%; margin-top:22px; padding:12px; border:0; border-radius:8px;
+             background:var(--accent); color:white; font-size:1rem; font-weight:600; cursor:pointer; }
+    button:hover { background:#2563eb; }
+    button:disabled { opacity:0.6; cursor:not-allowed; }
+    #result { margin-top:20px; padding:16px; border-radius:8px; text-align:center;
+              font-weight:600; display:none; }
+    #result.authentic { background:#064e3b; color:#6ee7b7; border:1px solid #065f46; }
+    #result.forged    { background:#7f1d1d; color:#fca5a5; border:1px solid #991b1b; }
+    #result.error     { background:#78350f; color:#fcd34d; border:1px solid #92400e; }
+    .conf { display:block; font-weight:400; font-size:0.8rem; margin-top:4px; opacity:0.85; }
+  </style>
 </head>
 <body>
-    <h2>Bank Note Authentication</h2>
+  <div class="card">
+    <h1>Bank Note Authentication</h1>
+    <p class="sub">Enter the four wavelet features to classify the note.</p>
 
-    <label>Variance</label>
-    <input type="number" step="any" id="variance" value="3.6216">
+    <label for="variance">Variance</label>
+    <input type="number" step="any" id="variance" value="3.6216" />
 
-    <label>Skewness</label>
-    <input type="number" step="any" id="skewness" value="8.6661">
+    <label for="skewness">Skewness</label>
+    <input type="number" step="any" id="skewness" value="8.6661" />
 
-    <label>Curtosis</label>
-    <input type="number" step="any" id="curtosis" value="-2.8073">
+    <label for="curtosis">Curtosis</label>
+    <input type="number" step="any" id="curtosis" value="-2.8073" />
 
-    <label>Entropy</label>
-    <input type="number" step="any" id="entropy" value="-0.44699">
+    <label for="entropy">Entropy</label>
+    <input type="number" step="any" id="entropy" value="-0.44699" />
 
-    <button onclick="predict()">Predict</button>
+    <button id="btn" onclick="predict()">Predict</button>
+    <div id="result"></div>
+  </div>
 
+  <script>
+    async function predict() {
+      const btn = document.getElementById("btn");
+      const payload = {
+        variance: parseFloat(document.getElementById("variance").value),
+        skewness: parseFloat(document.getElementById("skewness").value),
+        curtosis: parseFloat(document.getElementById("curtosis").value),
+        entropy:  parseFloat(document.getElementById("entropy").value),
+      };
 
-    <p id="result"></p>
+      if (Object.values(payload).some(Number.isNaN)) {
+        show("error", "Please fill in all four fields with numbers.");
+        return;
+      }
 
-    <script>
-        async function predict() {
-            const data = {
-                variance:parseFloat(document.getElementById("variance").value),
-                skewness:parseFloat(document.getElementById("skewness").value),
-                curtosis:parseFloat(document.getElementById("curtosis").value),
-                entropy:parseFloat(document.getElementById("entropy").value),
+      btn.disabled = true; btn.textContent = "Predicting...";
+      try {
+        // Relative URL — resolves to localhost locally and to your Render URL when deployed.
+        const res = await fetch("/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error("Server responded " + res.status);
+        const data = await res.json();
+        show(data.prediction === 1 ? "forged" : "authentic", data.label, data.confidence);
+      } catch (err) {
+        show("error", "Request failed: " + err.message);
+      } finally {
+        btn.disabled = false; btn.textContent = "Predict";
+      }
+    }
 
-            };
-
-            const result = document.getElementById("result")
-
-            try{
-                const res = await fetch("/predict",{
-                    method:"POST",
-                    headers:{"Content-Type":"application/json"},
-                    body:JSON.stringify(data)
-                });
-                const out = await res.json();
-
-                result.textContent = out.label + "( Confidence: "+ (out.confidence*100).toFixed(2)+"%)"
-                // result.textContent = out
-            }catch (err){
-                result.textContent = "Error" + err.message;
-            }
-        }
-    </script>
+    function show(cls, text, confidence) {
+      const result = document.getElementById("result");
+      result.className = cls;
+      result.style.display = "block";
+      result.innerHTML = confidence !== undefined
+        ? text + '<span class="conf">confidence: ' + (confidence * 100).toFixed(2) + '%</span>'
+        : text;
+    }
+  </script>
 </body>
 </html>
