@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank note authentication</title>
+
+    <style>
+        body{font-family:Aria , sans-serif; max-width: 400px;margin: 40px auto;}
+        label{display: block;margin-top: 10px;}
+        input{width: 100%; padding: 6px;}
+        button{margin-top: 16px;padding: 10px 20px; cursor: pointer;}
+        #result{margin-top: 20px;font-weight: bold;}
+    </style>
+</head>
+<body>
+    <h2>Bank Note Authentication</h2>
+
+    <label>Variance</label>
+    <input type="number" step="any" id="variance" value="3.6216">
+
+    <label>Skewness</label>
+    <input type="number" step="any" id="skewness" value="8.6661">
+
+    <label>Curtosis</label>
+    <input type="number" step="any" id="curtosis" value="-2.8073">
+
+    <label>Entropy</label>
+    <input type="number" step="any" id="entropy" value="-0.44699">
+
+    <button onclick="predict()">Predict</button>
+
+
+    <p id="result"></p>
+
+    <script>
+        async function predict() {
+            const data = {
+                variance:parseFloat(document.getElementById("variance").value),
+                skewness:parseFloat(document.getElementById("skewness").value),
+                curtosis:parseFloat(document.getElementById("curtosis").value),
+                entropy:parseFloat(document.getElementById("entropy").value),
+
+            };
+
+            const result = document.getElementById("result")
+
+            try{
+                const res = await fetch("/predict",{
+                    method:"POST",
+                    headers:{"Content-Type":"application/json"},
+                    body:JSON.stringify(data)
+                });
+                const out = await res.json();
+
+                result.textContent = out.label + "( Confidence: "+ (out.confidence*100).toFixed(2)+"%)"
+                // result.textContent = out
+            }catch (err){
+                result.textContent = "Error" + err.message;
+            }
+        }
+    </script>
+</body>
+</html>
