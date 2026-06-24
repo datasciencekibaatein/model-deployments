@@ -1,6 +1,7 @@
 import joblib
 import numpy as np
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from schema import BankNote
 
 app = FastAPI(
@@ -13,7 +14,7 @@ model = joblib.load("model/classifier.joblib")
 
 @app.get("/")
 def home():
-    return {"message":"Bank note authentication api is running"}
+    return FileResponse("static/index.html")
 
 @app.get('/health')
 def health():
